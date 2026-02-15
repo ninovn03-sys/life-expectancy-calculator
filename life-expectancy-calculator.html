@@ -1,0 +1,1276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Life Expectancy Calculator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0c1222;
+    --bg2: #111a2e;
+    --card: #162038;
+    --card-hover: #1a2744;
+    --border: #243352;
+    --accent: #60a5fa;
+    --accent2: #38bdf8;
+    --accent-glow: rgba(96, 165, 250, 0.15);
+    --green: #34d399;
+    --green-dim: rgba(52, 211, 153, 0.12);
+    --red: #f87171;
+    --red-dim: rgba(248, 113, 113, 0.12);
+    --yellow: #fbbf24;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --text3: #64748b;
+    --serif: 'DM Serif Display', Georgia, serif;
+    --sans: 'DM Sans', -apple-system, sans-serif;
+  }
+
+  html { font-size: 16px; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background atmosphere */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(ellipse at 30% 20%, rgba(96,165,250,0.06) 0%, transparent 50%),
+                radial-gradient(ellipse at 70% 80%, rgba(56,189,248,0.04) 0%, transparent 50%);
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  #root { position: relative; z-index: 1; }
+
+  /* Animations */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  @keyframes countUp {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes barGrow {
+    from { width: 0%; }
+  }
+
+  .fade-up { animation: fadeUp 0.5s ease-out both; }
+  .fade-in { animation: fadeIn 0.4s ease-out both; }
+
+  /* Layout */
+  .app-container {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+    animation: fadeUp 0.6s ease-out both;
+  }
+  .header-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    margin-bottom: 1rem;
+    font-size: 1.5rem;
+  }
+  .header h1 {
+    font-family: var(--serif);
+    font-size: 1.85rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #e2e8f0, #94a3b8);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  .header p {
+    color: var(--text3);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    max-width: 420px;
+    margin: 0 auto;
+  }
+
+  /* Progress bar */
+  .progress-container {
+    margin-bottom: 2rem;
+    animation: fadeIn 0.5s ease-out 0.2s both;
+  }
+  .progress-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.5rem;
+  }
+  .progress-step {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+  .progress-count {
+    font-size: 0.75rem;
+    color: var(--text3);
+  }
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 4px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Question card */
+  .question-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.75rem;
+    animation: fadeUp 0.4s ease-out both;
+  }
+  .question-title {
+    font-family: var(--serif);
+    font-size: 1.2rem;
+    font-weight: 400;
+    margin-bottom: 0.4rem;
+    color: var(--text);
+  }
+  .question-subtitle {
+    font-size: 0.8rem;
+    color: var(--text3);
+    margin-bottom: 1.25rem;
+    line-height: 1.4;
+  }
+
+  /* Option buttons */
+  .options-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  .option-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    background: var(--bg2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+    line-height: 1.35;
+  }
+  .option-btn:hover {
+    background: var(--card-hover);
+    border-color: var(--accent);
+    transform: translateX(4px);
+  }
+  .option-btn.selected {
+    background: var(--accent-glow);
+    border-color: var(--accent);
+  }
+  .option-radio {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    border: 2px solid var(--text3);
+    transition: all 0.2s ease;
+    position: relative;
+  }
+  .option-btn:hover .option-radio { border-color: var(--accent); }
+  .option-btn.selected .option-radio {
+    border-color: var(--accent);
+    background: var(--accent);
+  }
+  .option-btn.selected .option-radio::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--bg);
+  }
+
+  /* Multi-select checkboxes */
+  .option-check {
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+    border-radius: 5px;
+    border: 2px solid var(--text3);
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+  }
+  .option-btn:hover .option-check { border-color: var(--accent); }
+  .option-btn.selected .option-check {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: var(--bg);
+  }
+
+  /* Navigation */
+  .nav-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.25rem;
+  }
+  .nav-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.65rem 1.25rem;
+    border-radius: 10px;
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: none;
+  }
+  .nav-btn.back {
+    background: transparent;
+    color: var(--text3);
+    border: 1px solid var(--border);
+  }
+  .nav-btn.back:hover { color: var(--text); border-color: var(--text3); }
+  .nav-btn.next {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: var(--bg);
+  }
+  .nav-btn.next:hover { opacity: 0.9; transform: translateY(-1px); }
+  .nav-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    transform: none !important;
+  }
+
+  /* Results page */
+  .results-container {
+    animation: fadeUp 0.5s ease-out both;
+  }
+  .result-hero {
+    text-align: center;
+    padding: 2.5rem 1.5rem;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    margin-bottom: 1.5rem;
+    position: relative;
+    overflow: hidden;
+  }
+  .result-hero::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, var(--accent-glow), transparent 70%);
+    pointer-events: none;
+  }
+  .result-hero .label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--accent);
+    margin-bottom: 0.75rem;
+    position: relative;
+  }
+  .result-hero .big-number {
+    font-family: var(--serif);
+    font-size: 4rem;
+    font-weight: 400;
+    background: linear-gradient(135deg, #e2e8f0, var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    line-height: 1.1;
+    margin-bottom: 0.4rem;
+    animation: countUp 0.6s ease-out 0.3s both;
+    position: relative;
+  }
+  .result-hero .big-number span {
+    font-size: 1.5rem;
+    -webkit-text-fill-color: var(--text2);
+  }
+  .result-hero .range {
+    font-size: 0.85rem;
+    color: var(--text3);
+    position: relative;
+  }
+  .result-hero .remaining {
+    display: inline-block;
+    margin-top: 1rem;
+    padding: 0.4rem 1rem;
+    background: var(--green-dim);
+    color: var(--green);
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 20px;
+    position: relative;
+  }
+
+  /* Factor breakdown */
+  .breakdown-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+  .breakdown-card h3 {
+    font-family: var(--serif);
+    font-size: 1.1rem;
+    font-weight: 400;
+    margin-bottom: 1rem;
+    color: var(--text);
+  }
+  .factor-row {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 0.82rem;
+    animation: slideIn 0.3s ease-out both;
+  }
+  .factor-row:last-child { border-bottom: none; }
+  .factor-name {
+    flex: 1;
+    color: var(--text2);
+    line-height: 1.3;
+  }
+  .factor-value {
+    flex-shrink: 0;
+    font-weight: 700;
+    font-size: 0.85rem;
+    min-width: 65px;
+    text-align: right;
+  }
+  .factor-value.positive { color: var(--green); }
+  .factor-value.negative { color: var(--red); }
+  .factor-value.neutral { color: var(--text3); }
+
+  .factor-bar-track {
+    flex-shrink: 0;
+    width: 60px;
+    height: 6px;
+    background: var(--bg);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .factor-bar {
+    height: 100%;
+    border-radius: 3px;
+    animation: barGrow 0.6s ease-out both;
+  }
+  .factor-bar.positive { background: var(--green); }
+  .factor-bar.negative { background: var(--red); }
+
+  /* Insights */
+  .insight-item {
+    padding: 0.75rem 1rem;
+    background: var(--bg2);
+    border-radius: 10px;
+    margin-bottom: 0.5rem;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: var(--text2);
+  }
+  .insight-item strong { color: var(--text); }
+  .insight-item .emoji { margin-right: 0.4rem; }
+
+  /* PDF button */
+  .pdf-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.9rem 1.5rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: var(--bg);
+    border: none;
+    border-radius: 12px;
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 1.5rem;
+  }
+  .pdf-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  .restart-btn {
+    display: block;
+    margin: 1rem auto 0;
+    padding: 0.6rem 1.5rem;
+    background: transparent;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text3);
+    font-family: var(--sans);
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .restart-btn:hover { color: var(--text); border-color: var(--text3); }
+
+  /* Disclaimer */
+  .disclaimer {
+    margin-top: 1.5rem;
+    padding: 1rem;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 0.72rem;
+    color: var(--text3);
+    line-height: 1.5;
+  }
+
+  /* Welcome screen */
+  .welcome {
+    text-align: center;
+    padding: 3rem 1rem;
+    animation: fadeUp 0.6s ease-out both;
+  }
+  .welcome h2 {
+    font-family: var(--serif);
+    font-size: 1.5rem;
+    margin: 1.5rem 0 0.75rem;
+    color: var(--text);
+  }
+  .welcome p {
+    color: var(--text3);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    max-width: 440px;
+    margin: 0 auto 2rem;
+  }
+  .welcome .features {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    max-width: 360px;
+    margin: 0 auto 2rem;
+    text-align: left;
+  }
+  .welcome .feature {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-size: 0.82rem;
+    color: var(--text2);
+  }
+  .welcome .feature-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    flex-shrink: 0;
+  }
+  .start-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.85rem 2rem;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    color: var(--bg);
+    border: none;
+    border-radius: 12px;
+    font-family: var(--sans);
+    font-size: 0.95rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .start-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(96,165,250,0.25); }
+
+  /* Computing animation */
+  .computing {
+    text-align: center;
+    padding: 4rem 1rem;
+    animation: fadeIn 0.4s ease-out both;
+  }
+  .computing .spinner {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    margin: 0 auto 1.5rem;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .computing p {
+    color: var(--text2);
+    font-size: 0.9rem;
+    animation: pulse 1.5s ease infinite;
+  }
+
+  @media (max-width: 480px) {
+    .app-container { padding: 1.25rem 1rem 3rem; }
+    .header h1 { font-size: 1.5rem; }
+    .result-hero .big-number { font-size: 3rem; }
+    .question-card { padding: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useCallback, useEffect } = React;
+
+// ========== QUESTIONNAIRE DATA ==========
+const QUESTIONS = [
+  {
+    id: 'sex',
+    title: 'What is your biological sex?',
+    subtitle: 'This determines the actuarial baseline from life tables.',
+    step: 'Demographics',
+    options: [
+      { value: 'male', label: 'Male' },
+      { value: 'female', label: 'Female' },
+    ]
+  },
+  {
+    id: 'age',
+    title: 'What is your current age?',
+    subtitle: 'Used to determine remaining life expectancy.',
+    step: 'Demographics',
+    options: [
+      { value: '25', label: '18–29' },
+      { value: '35', label: '30–39' },
+      { value: '45', label: '40–49' },
+      { value: '55', label: '50–59' },
+      { value: '64', label: '60–69' },
+      { value: '75', label: '70–79' },
+      { value: '85', label: '80+' },
+    ]
+  },
+  {
+    id: 'race',
+    title: 'What is your race/ethnicity?',
+    subtitle: 'Affects actuarial baseline life expectancy.',
+    step: 'Demographics',
+    options: [
+      { value: 'white', label: 'White / European' },
+      { value: 'black', label: 'Black / African American' },
+      { value: 'hispanic', label: 'Hispanic / Latino' },
+      { value: 'asian', label: 'Asian / Pacific Islander' },
+    ]
+  },
+  {
+    id: 'conditions',
+    title: 'Have you been diagnosed with any major conditions?',
+    subtitle: 'Select all that apply.',
+    step: 'Health',
+    multi: true,
+    options: [
+      { value: 'heart', label: 'Heart disease / cardiovascular condition' },
+      { value: 'diabetes', label: 'Type 2 diabetes' },
+      { value: 'cancer', label: 'Cancer (current or past)' },
+      { value: 'none', label: 'None of these' },
+    ]
+  },
+  {
+    id: 'family',
+    title: 'Do you have a family history of longevity?',
+    subtitle: 'Did either parent or grandparent live past 85?',
+    step: 'Health',
+    options: [
+      { value: 'yes', label: 'Yes — at least one parent lived past 85' },
+      { value: 'mixed', label: 'Mixed — one parent past 80, one didn\'t' },
+      { value: 'no', label: 'No — neither parent lived past 75' },
+      { value: 'unknown', label: 'Not sure / don\'t know' },
+    ]
+  },
+  {
+    id: 'smoking',
+    title: 'What is your smoking history?',
+    subtitle: 'Smoking is the single largest modifiable risk factor for life expectancy.',
+    step: 'Lifestyle',
+    options: [
+      { value: 'never', label: 'Never smoked' },
+      { value: 'former_10', label: 'Former smoker (quit 10+ years ago)' },
+      { value: 'former_recent', label: 'Former smoker (quit less than 10 years ago)' },
+      { value: 'current', label: 'Current smoker' },
+    ]
+  },
+  {
+    id: 'exercise',
+    title: 'How would you describe your physical activity?',
+    subtitle: 'Exercise is one of the strongest protective factors.',
+    step: 'Lifestyle',
+    options: [
+      { value: 'sedentary', label: 'Sedentary (little to no exercise)' },
+      { value: 'light', label: 'Light (1–2 days/week, walking etc.)' },
+      { value: 'moderate', label: 'Moderate (3–5 days/week, 150+ min)' },
+      { value: 'very_active', label: 'Very active (6–7 days/week, vigorous)' },
+    ]
+  },
+  {
+    id: 'alcohol',
+    title: 'How much alcohol do you consume?',
+    subtitle: 'A standard drink is one beer, glass of wine, or spirit.',
+    step: 'Lifestyle',
+    options: [
+      { value: 'none', label: 'Non-drinker' },
+      { value: 'light', label: 'Light (1–7 drinks/week)' },
+      { value: 'moderate', label: 'Moderate (8–14 drinks/week)' },
+      { value: 'heavy', label: 'Heavy (15+ drinks/week)' },
+    ]
+  },
+  {
+    id: 'bmi',
+    title: 'What best describes your body weight?',
+    subtitle: 'BMI is an imperfect but useful population-level indicator.',
+    step: 'Health',
+    options: [
+      { value: 'underweight', label: 'Underweight (BMI < 18.5)' },
+      { value: 'healthy', label: 'Healthy weight (BMI 18.5–24.9)' },
+      { value: 'overweight', label: 'Slightly overweight (BMI 25–29.9)' },
+      { value: 'obese', label: 'Obese (BMI 30+)' },
+    ]
+  },
+  {
+    id: 'relationship',
+    title: 'What is your relationship status?',
+    subtitle: 'Social connection has a strong link to longevity.',
+    step: 'Social',
+    options: [
+      { value: 'married', label: 'Married / long-term partner' },
+      { value: 'single', label: 'Single / never married' },
+      { value: 'divorced', label: 'Divorced / separated' },
+      { value: 'widowed', label: 'Widowed' },
+    ]
+  },
+  {
+    id: 'income',
+    title: 'What is your approximate household income?',
+    subtitle: 'Income correlates with healthcare access and other factors.',
+    step: 'Social',
+    options: [
+      { value: 'low', label: 'Under $30k/year' },
+      { value: 'middle', label: '$30k–$75k/year' },
+      { value: 'upper_middle', label: '$75k–$150k/year' },
+      { value: 'high', label: 'Over $150k/year' },
+    ]
+  },
+  {
+    id: 'education',
+    title: 'What is your highest level of education?',
+    subtitle: 'Education is independently associated with longevity.',
+    step: 'Social',
+    options: [
+      { value: 'high_school', label: 'High school or less' },
+      { value: 'some_college', label: 'Some college / associate degree' },
+      { value: 'bachelors', label: 'Bachelor\'s degree' },
+      { value: 'graduate', label: 'Graduate or professional degree' },
+    ]
+  },
+  {
+    id: 'sleep',
+    title: 'How much sleep do you typically get?',
+    subtitle: '7–8 hours is considered optimal for longevity.',
+    step: 'Wellbeing',
+    options: [
+      { value: 'short', label: 'Less than 6 hours' },
+      { value: 'slightly_short', label: '6–7 hours' },
+      { value: 'optimal', label: '7–8 hours' },
+      { value: 'long', label: 'More than 8 hours' },
+    ]
+  },
+  {
+    id: 'stress',
+    title: 'How would you rate your chronic stress level?',
+    subtitle: 'Sustained stress affects cardiovascular and immune health.',
+    step: 'Wellbeing',
+    options: [
+      { value: 'low', label: 'Low — life feels manageable' },
+      { value: 'moderate', label: 'Moderate — some ongoing stressors' },
+      { value: 'high', label: 'High — chronic significant stress' },
+    ]
+  },
+];
+
+// ========== THE MODEL ==========
+function computeLifeExpectancy(answers) {
+  // STEP 1: Actuarial baseline by sex, age, race
+  // Simplified CDC life table baselines (total LE at birth, adjusted for current age)
+  const age = parseInt(answers.age);
+
+  // Base LE at birth by sex/race (approximate CDC 2023)
+  const baselines = {
+    male:   { white: 76.3, black: 71.8, hispanic: 79.9, asian: 83.5 },
+    female: { white: 81.1, black: 78.1, hispanic: 84.4, asian: 87.1 },
+  };
+
+  let baseLE = baselines[answers.sex]?.[answers.race] || 78;
+
+  // Conditional life expectancy adjustment: surviving to current age means
+  // you've already beaten early mortality. Add ~0.3 yr per decade survived past 30.
+  if (age > 30) {
+    baseLE += (age - 30) * 0.04;
+  }
+
+  // STEP 2: Additive adjustments
+  const factors = [];
+
+  // Family history
+  const familyAdj = { yes: 2.5, mixed: 1.0, no: -1.0, unknown: 0 };
+  const fv = familyAdj[answers.family] || 0;
+  factors.push({ name: 'Family history', value: fv });
+
+  // Smoking
+  const smokingAdj = { never: 1.0, former_10: -1.0, former_recent: -3.0, current: -8.0 };
+  const sv = smokingAdj[answers.smoking] || 0;
+  factors.push({ name: 'Smoking history', value: sv });
+
+  // Exercise
+  const exerciseAdj = { sedentary: -2.5, light: 0.5, moderate: 2.5, very_active: 4.0 };
+  const ev = exerciseAdj[answers.exercise] || 0;
+  factors.push({ name: 'Physical activity', value: ev });
+
+  // Alcohol
+  const alcoholAdj = { none: 0, light: 0.5, moderate: -0.5, heavy: -4.0 };
+  const av = alcoholAdj[answers.alcohol] || 0;
+  factors.push({ name: 'Alcohol consumption', value: av });
+
+  // BMI
+  const bmiAdj = { underweight: -1.5, healthy: 0, overweight: -1.0, obese: -3.5 };
+  const bv = bmiAdj[answers.bmi] || 0;
+  factors.push({ name: 'Body weight / BMI', value: bv });
+
+  // Relationship
+  const relAdj = { married: 2.0, single: -1.5, divorced: -1.0, widowed: -1.5 };
+  const rv = relAdj[answers.relationship] || 0;
+  const relGender = answers.sex === 'male' ? 1 : 0.7; // stronger effect for men
+  factors.push({ name: 'Relationship status', value: rv * relGender });
+
+  // Income
+  const incAdj = { low: -1.5, middle: 0, upper_middle: 1.5, high: 2.5 };
+  const iv = incAdj[answers.income] || 0;
+  factors.push({ name: 'Household income', value: iv });
+
+  // Education
+  const eduAdj = { high_school: -1.0, some_college: 0, bachelors: 1.0, graduate: 1.5 };
+  const edv = eduAdj[answers.education] || 0;
+  factors.push({ name: 'Education level', value: edv });
+
+  // Sleep
+  const sleepAdj = { short: -1.5, slightly_short: -0.5, optimal: 0.5, long: -0.5 };
+  const slv = sleepAdj[answers.sleep] || 0;
+  factors.push({ name: 'Sleep duration', value: slv });
+
+  // Stress
+  const stressAdj = { low: 0.5, moderate: -0.5, high: -2.0 };
+  const stv = stressAdj[answers.stress] || 0;
+  factors.push({ name: 'Chronic stress', value: stv });
+
+  // Chronic conditions
+  const conds = answers.conditions || [];
+  let condAdj = 0;
+  if (conds.includes('none') || conds.length === 0) {
+    condAdj = 1.5;
+  } else {
+    if (conds.includes('heart')) condAdj -= 4.0;
+    if (conds.includes('diabetes')) condAdj -= 3.0;
+    if (conds.includes('cancer')) condAdj -= 2.5;
+  }
+  factors.push({ name: 'Chronic conditions', value: condAdj });
+
+  // STEP 3: Interaction effects
+  const interactions = [];
+
+  // Exercise × Healthy BMI
+  if (['moderate','very_active'].includes(answers.exercise) && answers.bmi === 'healthy') {
+    interactions.push({ name: 'Exercise × Healthy BMI', value: 0.5 });
+  }
+  // Exercise × No conditions
+  if (['moderate','very_active'].includes(answers.exercise) && (conds.includes('none') || conds.length === 0)) {
+    interactions.push({ name: 'Exercise × Disease-free', value: 0.5 });
+  }
+  // Marriage × Income
+  if (answers.relationship === 'married' && ['upper_middle','high'].includes(answers.income)) {
+    interactions.push({ name: 'Marriage × Financial stability', value: 0.5 });
+  }
+  // Smoking × Sedentary (compounds risk)
+  if (answers.smoking === 'current' && answers.exercise === 'sedentary') {
+    interactions.push({ name: 'Smoking × Sedentary (compound risk)', value: -2.0 });
+  }
+  // Obesity × Diabetes
+  if (answers.bmi === 'obese' && conds.includes('diabetes')) {
+    interactions.push({ name: 'Obesity × Diabetes', value: -1.5 });
+  }
+  // High stress × Heavy drinking
+  if (answers.stress === 'high' && answers.alcohol === 'heavy') {
+    interactions.push({ name: 'High stress × Heavy drinking', value: -1.0 });
+  }
+  // Education × Income (compounding socioeconomic benefit)
+  if (['bachelors','graduate'].includes(answers.education) && ['upper_middle','high'].includes(answers.income)) {
+    interactions.push({ name: 'Education × Income synergy', value: 0.5 });
+  }
+
+  // STEP 4: Sum with diminishing returns
+  const rawAdditiveSum = factors.reduce((s, f) => s + f.value, 0);
+  const rawInteractionSum = interactions.reduce((s, i) => s + i.value, 0);
+  const rawTotal = rawAdditiveSum + rawInteractionSum;
+
+  const C = 8.0;
+  const effectiveAdj = rawTotal >= 0
+    ? C * Math.log(1 + rawTotal / C)
+    : -C * Math.log(1 + Math.abs(rawTotal) / C);
+
+  const predictedLE = baseLE + effectiveAdj;
+  const remaining = Math.max(0, predictedLE - age);
+
+  // Sort factors by absolute impact
+  const allFactors = [...factors, ...interactions].sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+
+  // Top positive and negative
+  const topPositive = allFactors.filter(f => f.value > 0).slice(0, 3);
+  const topNegative = allFactors.filter(f => f.value < 0).slice(0, 3);
+
+  return {
+    baseLE: Math.round(baseLE * 10) / 10,
+    predictedLE: Math.round(predictedLE * 10) / 10,
+    rangeLow: Math.round((predictedLE - 3.5) * 10) / 10,
+    rangeHigh: Math.round((predictedLE + 3.5) * 10) / 10,
+    remaining: Math.round(remaining * 10) / 10,
+    factors,
+    interactions,
+    allFactors,
+    topPositive,
+    topNegative,
+    rawTotal: Math.round(rawTotal * 10) / 10,
+    effectiveAdj: Math.round(effectiveAdj * 10) / 10,
+    age,
+  };
+}
+
+// ========== PDF GENERATION ==========
+function generatePDF(answers, result) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ format: 'letter' });
+  const W = doc.internal.pageSize.getWidth();
+  const M = 20; // margin
+  let y = 20;
+
+  const blue = [44, 82, 130];
+  const darkText = [45, 55, 72];
+  const gray = [100, 116, 139];
+  const green = [39, 103, 73];
+  const red = [197, 48, 48];
+
+  // Title
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(20);
+  doc.setTextColor(...blue);
+  doc.text('Life Expectancy Prediction Report', W / 2, y, { align: 'center' });
+  y += 8;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...gray);
+  doc.text(`Generated ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} — Quantitative Epidemiological Model`, W / 2, y, { align: 'center' });
+  y += 4;
+  doc.setDrawColor(200, 213, 224);
+  doc.line(M, y, W - M, y);
+  y += 10;
+
+  // Result box
+  doc.setFillColor(235, 248, 255);
+  doc.roundedRect(M, y, W - 2 * M, 38, 3, 3, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.setTextColor(...blue);
+  doc.text('PREDICTED LIFE EXPECTANCY', W / 2, y + 8, { align: 'center' });
+  doc.setFontSize(30);
+  doc.text(`${result.predictedLE} years`, W / 2, y + 22, { align: 'center' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(10);
+  doc.setTextColor(...gray);
+  doc.text(`Plausible range: ${result.rangeLow} – ${result.rangeHigh} years  |  Remaining: ~${result.remaining} years`, W / 2, y + 32, { align: 'center' });
+  y += 48;
+
+  // Profile section
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(...blue);
+  doc.text('Your Profile', M, y);
+  y += 7;
+
+  const profileLabels = {
+    sex: 'Biological sex', age: 'Current age', race: 'Race/ethnicity',
+    conditions: 'Chronic conditions', family: 'Family longevity',
+    smoking: 'Smoking history', exercise: 'Physical activity',
+    alcohol: 'Alcohol', bmi: 'Body weight', relationship: 'Relationship',
+    income: 'Household income', education: 'Education', sleep: 'Sleep',
+    stress: 'Stress level'
+  };
+
+  doc.setFontSize(8.5);
+  QUESTIONS.forEach(q => {
+    const val = answers[q.id];
+    const display = q.multi
+      ? (Array.isArray(val) ? val.map(v => q.options.find(o => o.value === v)?.label).join(', ') : val)
+      : q.options.find(o => o.value === val)?.label || val;
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...darkText);
+    doc.text(profileLabels[q.id] || q.id, M, y);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...gray);
+    doc.text(String(display), M + 48, y);
+    y += 5;
+    if (y > 270) { doc.addPage(); y = 20; }
+  });
+  y += 6;
+
+  // Factor breakdown
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(...blue);
+  doc.text('Factor Adjustments', M, y);
+  y += 7;
+
+  doc.setFontSize(8.5);
+  result.allFactors.forEach(f => {
+    if (y > 270) { doc.addPage(); y = 20; }
+    const sign = f.value >= 0 ? '+' : '';
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...darkText);
+    doc.text(f.name, M, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...(f.value >= 0 ? green : f.value < 0 ? red : gray));
+    doc.text(`${sign}${f.value.toFixed(1)} yrs`, W - M, y, { align: 'right' });
+    y += 5;
+  });
+
+  y += 3;
+  doc.setDrawColor(200, 213, 224);
+  doc.line(M, y, W - M, y);
+  y += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.setTextColor(...darkText);
+  doc.setFontSize(9);
+  doc.text(`Baseline: ${result.baseLE} yrs  |  Raw adjustment: ${result.rawTotal >= 0 ? '+' : ''}${result.rawTotal} yrs  |  After diminishing returns: ${result.effectiveAdj >= 0 ? '+' : ''}${result.effectiveAdj} yrs  |  Final: ${result.predictedLE} yrs`, M, y);
+  y += 12;
+
+  // Disclaimer
+  if (y > 250) { doc.addPage(); y = 20; }
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(180, 50, 50);
+  doc.text('Important Disclaimer', M, y);
+  y += 4;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(...gray);
+  const disc = 'This model provides a population-level statistical estimate, not a medical diagnosis or guarantee. Individual outcomes vary based on genetics, environmental exposures, accidents, and factors not captured here. The adjustments are drawn from published epidemiological research but involve simplifications. This is not a substitute for medical advice. Please consult your physician for personalized health guidance.';
+  const lines = doc.splitTextToSize(disc, W - 2 * M);
+  doc.text(lines, M, y);
+
+  doc.save('Life_Expectancy_Report.pdf');
+}
+
+// ========== COMPONENTS ==========
+function WelcomeScreen({ onStart }) {
+  return (
+    <div className="welcome">
+      <div className="header-icon">⏳</div>
+      <h2>Life Expectancy Calculator</h2>
+      <p>
+        Answer 14 questions about your health, lifestyle, and background.
+        Our epidemiological model will estimate your life expectancy based on
+        peer-reviewed research — then generate a personalized PDF report.
+      </p>
+      <div className="features">
+        <div className="feature"><span className="feature-dot"></span> Based on CDC life tables & published meta-analyses</div>
+        <div className="feature"><span className="feature-dot"></span> Accounts for 14 factors + interaction effects</div>
+        <div className="feature"><span className="feature-dot"></span> Includes diminishing-returns correction</div>
+        <div className="feature"><span className="feature-dot"></span> Downloadable PDF report with full breakdown</div>
+      </div>
+      <button className="start-btn" onClick={onStart}>
+        Get Started →
+      </button>
+    </div>
+  );
+}
+
+function QuestionScreen({ question, questionIndex, total, answer, onAnswer, onNext, onBack }) {
+  const isMulti = question.multi;
+  const progress = ((questionIndex + 1) / total) * 100;
+
+  const handleSelect = (value) => {
+    if (isMulti) {
+      let current = Array.isArray(answer) ? [...answer] : [];
+      if (value === 'none') {
+        current = ['none'];
+      } else {
+        current = current.filter(v => v !== 'none');
+        if (current.includes(value)) {
+          current = current.filter(v => v !== value);
+        } else {
+          current.push(value);
+        }
+      }
+      onAnswer(current);
+    } else {
+      onAnswer(value);
+    }
+  };
+
+  const isSelected = (value) => {
+    if (isMulti) return Array.isArray(answer) && answer.includes(value);
+    return answer === value;
+  };
+
+  const canProceed = isMulti ? (Array.isArray(answer) && answer.length > 0) : !!answer;
+
+  return (
+    <div key={question.id}>
+      <div className="progress-container">
+        <div className="progress-meta">
+          <span className="progress-step">{question.step}</span>
+          <span className="progress-count">{questionIndex + 1} of {total}</span>
+        </div>
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+        </div>
+      </div>
+
+      <div className="question-card fade-up" key={questionIndex}>
+        <div className="question-title">{question.title}</div>
+        <div className="question-subtitle">{question.subtitle}</div>
+
+        <div className="options-grid">
+          {question.options.map(opt => (
+            <button
+              key={opt.value}
+              className={`option-btn ${isSelected(opt.value) ? 'selected' : ''}`}
+              onClick={() => handleSelect(opt.value)}
+            >
+              {isMulti
+                ? <span className="option-check">{isSelected(opt.value) ? '✓' : ''}</span>
+                : <span className="option-radio"></span>
+              }
+              {opt.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="nav-row">
+          {questionIndex > 0
+            ? <button className="nav-btn back" onClick={onBack}>← Back</button>
+            : <div></div>
+          }
+          <button className="nav-btn next" onClick={onNext} disabled={!canProceed}>
+            {questionIndex === total - 1 ? 'Calculate →' : 'Next →'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ResultsScreen({ answers, result, onRestart }) {
+  const maxAbsVal = Math.max(...result.allFactors.map(f => Math.abs(f.value)), 1);
+
+  return (
+    <div className="results-container">
+      <div className="result-hero">
+        <div className="label">Predicted Life Expectancy</div>
+        <div className="big-number">{result.predictedLE} <span>years</span></div>
+        <div className="range">Plausible range: {result.rangeLow} – {result.rangeHigh} years</div>
+        <div className="remaining">~{result.remaining} more years from age {result.age}</div>
+      </div>
+
+      <div className="breakdown-card">
+        <h3>Factor Breakdown</h3>
+        {result.allFactors.map((f, i) => {
+          const sign = f.value >= 0 ? '+' : '';
+          const cls = f.value > 0 ? 'positive' : f.value < 0 ? 'negative' : 'neutral';
+          const barW = (Math.abs(f.value) / maxAbsVal) * 100;
+          return (
+            <div className="factor-row" key={f.name} style={{ animationDelay: `${i * 0.05}s` }}>
+              <span className="factor-name">{f.name}</span>
+              <div className="factor-bar-track">
+                <div className={`factor-bar ${cls}`} style={{ width: `${barW}%`, animationDelay: `${0.3 + i * 0.05}s` }}></div>
+              </div>
+              <span className={`factor-value ${cls}`}>{sign}{f.value.toFixed(1)} yrs</span>
+            </div>
+          );
+        })}
+      </div>
+
+      <div className="breakdown-card">
+        <h3>Model Summary</h3>
+        <div className="insight-item">
+          <strong>Baseline:</strong> {result.baseLE} years (actuarial life table for your demographic)
+        </div>
+        <div className="insight-item">
+          <strong>Raw adjustment:</strong> {result.rawTotal >= 0 ? '+' : ''}{result.rawTotal} years → After diminishing returns: {result.effectiveAdj >= 0 ? '+' : ''}{result.effectiveAdj} years
+        </div>
+        {result.topPositive.length > 0 && (
+          <div className="insight-item">
+            <span className="emoji">💪</span>
+            <strong>Top protective factors:</strong> {result.topPositive.map(f => `${f.name} (+${f.value.toFixed(1)})`).join(', ')}
+          </div>
+        )}
+        {result.topNegative.length > 0 && (
+          <div className="insight-item">
+            <span className="emoji">⚠️</span>
+            <strong>Main risk factors:</strong> {result.topNegative.map(f => `${f.name} (${f.value.toFixed(1)})`).join(', ')}
+          </div>
+        )}
+      </div>
+
+      <button className="pdf-btn" onClick={() => generatePDF(answers, result)}>
+        📄 Download PDF Report
+      </button>
+
+      <button className="restart-btn" onClick={onRestart}>
+        Start Over
+      </button>
+
+      <div className="disclaimer">
+        <strong>Disclaimer:</strong> This model provides a population-level statistical estimate — not a medical diagnosis or guarantee. Individual outcomes vary based on genetics, environmental exposures, accidents, and factors not captured here. The adjustments are drawn from published epidemiological research (CDC life tables, Lancet, JAMA, BMJ, NEJM meta-analyses) but involve simplifications. This is not a substitute for medical advice.
+      </div>
+    </div>
+  );
+}
+
+function ComputingScreen() {
+  return (
+    <div className="computing">
+      <div className="spinner"></div>
+      <p>Running epidemiological model...</p>
+    </div>
+  );
+}
+
+// ========== MAIN APP ==========
+function App() {
+  const [phase, setPhase] = useState('welcome'); // welcome, quiz, computing, results
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [answers, setAnswers] = useState({});
+  const [result, setResult] = useState(null);
+
+  const handleAnswer = useCallback((value) => {
+    setAnswers(prev => ({ ...prev, [QUESTIONS[questionIndex].id]: value }));
+  }, [questionIndex]);
+
+  const handleNext = useCallback(() => {
+    if (questionIndex < QUESTIONS.length - 1) {
+      setQuestionIndex(i => i + 1);
+    } else {
+      // Show computing animation then results
+      setPhase('computing');
+      setTimeout(() => {
+        const res = computeLifeExpectancy(answers);
+        setResult(res);
+        setPhase('results');
+      }, 1800);
+    }
+  }, [questionIndex, answers]);
+
+  const handleBack = useCallback(() => {
+    if (questionIndex > 0) setQuestionIndex(i => i - 1);
+  }, [questionIndex]);
+
+  const handleRestart = useCallback(() => {
+    setPhase('welcome');
+    setQuestionIndex(0);
+    setAnswers({});
+    setResult(null);
+  }, []);
+
+  return (
+    <div className="app-container">
+      <div className="header">
+        <div className="header-icon">⏳</div>
+        <h1>Life Expectancy Calculator</h1>
+        {phase !== 'results' && <p>Evidence-based longevity prediction model</p>}
+      </div>
+
+      {phase === 'welcome' && <WelcomeScreen onStart={() => setPhase('quiz')} />}
+
+      {phase === 'quiz' && (
+        <QuestionScreen
+          question={QUESTIONS[questionIndex]}
+          questionIndex={questionIndex}
+          total={QUESTIONS.length}
+          answer={answers[QUESTIONS[questionIndex].id]}
+          onAnswer={handleAnswer}
+          onNext={handleNext}
+          onBack={handleBack}
+        />
+      )}
+
+      {phase === 'computing' && <ComputingScreen />}
+
+      {phase === 'results' && result && (
+        <ResultsScreen answers={answers} result={result} onRestart={handleRestart} />
+      )}
+    </div>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById('root'));
+</script>
+</body>
+</html>
