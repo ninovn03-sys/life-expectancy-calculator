@@ -1,1 +1,0 @@
-You can calculate your life expectancy using this app. The app uses published studies that establish quantitative relationships between different factors such as behavior, health, etc. to calculate an individual life expectancy.
